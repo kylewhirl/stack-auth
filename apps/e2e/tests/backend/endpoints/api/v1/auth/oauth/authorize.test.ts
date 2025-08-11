@@ -126,3 +126,15 @@ it("should fail if an invalid redirect URL is provided", async ({ expect }) => {
     }
   `);
 });
+
+it("should redirect to custom auth domain when requested", async ({ expect }) => {
+  const response = await niceBackendFetch("/api/v1/auth/oauth/authorize/spotify", {
+    redirect: "manual",
+    query: {
+      ...await Auth.OAuth.getAuthorizeQuery(),
+      redirect_auth_domain: "http://localhost:8103",
+    },
+  });
+  expect(response.status).toBe(307);
+  expect(response.headers.get("location")).toMatch(/^http:\/\/localhost:8103\/api\/v1\/auth\/oauth\/authorize\/spotify\?/);
+});

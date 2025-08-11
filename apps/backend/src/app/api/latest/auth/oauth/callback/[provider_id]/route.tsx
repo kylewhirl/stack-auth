@@ -129,9 +129,11 @@ const handler = createSmartRouteHandler({
       const providerObj = await getProvider(provider as any);
       let callbackResult: Awaited<ReturnType<typeof providerObj.getCallback>>;
       try {
+        const innerRedirectUri = new URL(fullReq.nextUrl.pathname, fullReq.nextUrl.origin).toString();
         callbackResult = await providerObj.getCallback({
           codeVerifier: innerCodeVerifier,
           state: innerState,
+          redirectUri: innerRedirectUri,
           callbackParams: {
             ...query,
             ...body,
