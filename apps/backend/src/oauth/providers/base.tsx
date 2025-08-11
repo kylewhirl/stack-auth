@@ -112,6 +112,7 @@ export abstract class OAuthBaseProvider {
     codeVerifier: string,
     state: string,
     extraScope?: string,
+    redirectUri?: string,
   }) {
     return this.oauthClient.authorizationUrl({
       scope: mergeScopeStrings(this.scope, options.extraScope || ""),
@@ -123,6 +124,7 @@ export abstract class OAuthBaseProvider {
       response_type: "code",
       access_type: "offline",
       prompt: "consent",
+      redirect_uri: options.redirectUri ?? this.redirectUri,
       ...this.authorizationExtraParams,
     });
   }
@@ -131,10 +133,11 @@ export abstract class OAuthBaseProvider {
     callbackParams: CallbackParamsType,
     codeVerifier: string,
     state: string,
+    redirectUri?: string,
   }): Promise<{ userInfo: OAuthUserInfo, tokenSet: TokenSet }> {
     let tokenSet;
     const params = [
-      this.redirectUri,
+      options.redirectUri ?? this.redirectUri,
       options.callbackParams,
       {
         code_verifier: this.noPKCE ? undefined : options.codeVerifier,

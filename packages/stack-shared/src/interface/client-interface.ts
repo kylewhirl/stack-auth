@@ -942,6 +942,7 @@ export class StackClientInterface {
       state: string,
       type: "authenticate" | "link",
       providerScope?: string,
+      authDomain?: string,
     } & ({ type: "authenticate" } | { type: "link", session: InternalSession })
   ): Promise<string> {
     const updatedRedirectUrl = new URL(options.redirectUrl);
@@ -968,6 +969,9 @@ export class StackClientInterface {
     url.searchParams.set("response_type", "code");
     url.searchParams.set("type", options.type);
     url.searchParams.set("error_redirect_url", options.errorRedirectUrl);
+    if (options.authDomain) {
+      url.searchParams.set("redirect_auth_domain", options.authDomain);
+    }
 
     if (options.afterCallbackRedirectUrl) {
       url.searchParams.set("after_callback_redirect_url", options.afterCallbackRedirectUrl);

@@ -8,6 +8,7 @@ import { KnownErrors } from "@stackframe/stack-shared/dist/known-errors";
 import { urlSchema, yupNumber, yupObject, yupString } from "@stackframe/stack-shared/dist/schema-fields";
 import { getNodeEnvironment } from "@stackframe/stack-shared/dist/utils/env";
 import { StatusError } from "@stackframe/stack-shared/dist/utils/errors";
+import { validateRedirectUrl } from "@/lib/redirect-urls";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { generators } from "openid-client";
@@ -36,6 +37,7 @@ export const GET = createSmartRouteHandler({
       error_redirect_url: urlSchema.optional().meta({ openapiField: { hidden: true } }),
       error_redirect_uri: urlSchema.optional(),
       after_callback_redirect_url: yupString().optional(),
+      redirect_auth_domain: urlSchema.optional(),
 
       // oauth parameters
       client_id: yupString().defined(),
@@ -71,6 +73,21 @@ export const GET = createSmartRouteHandler({
 
     const provider = { id: providerRaw[0], ...providerRaw[1] };
 
+    if (query.redirect_auth_domain) {
+      const target = new URL(query.redirect_auth_domain);
+      const currentUrl = fullReq.nextUrl.clone();
+      currentUrl.protocol = target.protocol;
+      currentUrl.host = target.host;
+      currentUrl.pathname = (target.pathname.replace(/\/$/, "")) + currentUrl.pathname;
+      currentUrl.searchParams.delete("redirect_auth_domain");
+      if (currentUrl.toString() !== fullReq.nextUrl.toString()) {
+        if (!validateRedirectUrl(currentUrl, tenancy)) {
+          throw new KnownErrors.RedirectUrlNotWhitelisted();
+        }
+        redirect(currentUrl.toString());
+      }
+    }
+
     // If the authorization token is present, we are adding new scopes to the user instead of sign-in/sign-up
     let projectUserId: string | undefined;
     if (query.type === "link") {
@@ -96,10 +113,12 @@ export const GET = createSmartRouteHandler({
     const innerCodeVerifier = generators.codeVerifier();
     const innerState = generators.state();
     const providerObj = await getProvider(provider);
+    const innerRedirectUri = new URL(`/api/v1/auth/oauth/callback/${params.provider_id}`, fullReq.nextUrl.origin).toString();
     const oauthUrl = providerObj.getAuthorizationUrl({
       codeVerifier: innerCodeVerifier,
       state: innerState,
       extraScope: query.provider_scope,
+      redirectUri: innerRedirectUri,
     });
 
     await globalPrismaClient.oAuthOuterInfo.create({
